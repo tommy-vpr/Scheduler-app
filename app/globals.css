@@ -24,3 +24,25 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.react-calendar {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.react-calendar__tile--now {
+  background: rgb(221, 217, 243) !important;
+}
+
+.react-calendar__tile--active {
+  background: #7c3aed !important; /* Tailwind's blue-600 */
+  color: white !important;
+}
+
+.react-calendar__month-view__days__day--weekend:nth-child(7n) {
+  color: hsl(17, 86%, 58%);
+}
+
+.react-calendar__month-view__days__day--weekend:nth-child(7n + 6) {
+  color: hsl(17, 86%, 58%);
+}
