@@ -81,7 +81,11 @@ export default function AppointmentTable({
           </thead>
           <tbody>
             {appointments.map((appt) => (
-              <tr key={appt.id}>
+              <tr
+                key={appt.id}
+                onClick={() => openModal(appt.id, appt.status)}
+                className="cursor-pointer transition hover:bg-gray-50"
+              >
                 <td className="px-4 py-2 border-b border-gray-200">
                   {appt.customerName}
                 </td>
@@ -99,7 +103,11 @@ export default function AppointmentTable({
                 </td>
                 <td className="px-4 py-2 border-b border-gray-200 relative">
                   <button
-                    onClick={() => openModal(appt.id, appt.status)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+
+                      openModal(appt.id, appt.status);
+                    }}
                     className="cursor-pointer h-7 w-7 bg-gray-100 hover:bg-gray-200 transition rounded-4xl flex items-center justify-center"
                   >
                     <BsThreeDotsVertical />

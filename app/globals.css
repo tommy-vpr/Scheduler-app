@@ -39,10 +39,22 @@ body {
   color: white !important;
 }
 
+.react-calendar__tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .react-calendar__month-view__days__day--weekend:nth-child(7n) {
   color: hsl(17, 86%, 58%);
 }
 
 .react-calendar__month-view__days__day--weekend:nth-child(7n + 6) {
   color: hsl(17, 86%, 58%);
+}
+
+.cl-userButtonAvatarBox,
+.cl-userButtonTrigger .cl-avatarBox {
+  background-color: #7c3aed !important; /* purple */
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }

@@ -33,8 +33,6 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log("Appointments POST called");
-
     return NextResponse.json({ success: true, appointment });
   } catch (err) {
     console.error("Create appointment error:", err);

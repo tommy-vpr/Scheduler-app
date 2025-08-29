@@ -7,9 +7,19 @@ import { FaX } from "react-icons/fa6";
 import LoadingSpinner from "./LoadingSpinner";
 import toast from "react-hot-toast";
 
+// 👇 NEW: import your timezone utils
+import {
+  APP_TZ,
+  localSlotToUtcISO,
+  laDateParam,
+  isSameUtcMinute,
+} from "@/utils/datetime";
+import { formatInTimeZone } from "date-fns-tz";
+import Link from "next/link";
+
 type Appointment = {
   id: number;
-  date: string;
+  date: string; // ISO from API
   status: string;
 };
 
@@ -23,20 +33,6 @@ function generateTimeSlots(start = 11, end = 20) {
     }
   }
   return slots;
-}
-
-function formatTo24Hour(dateStr: string, timeStr: string): string {
-  const [hourMin, ampm] = timeStr.split(" ");
-  let [hour, minute] = hourMin.split(":").map(Number);
-  if (ampm === "PM" && hour !== 12) hour += 12;
-  if (ampm === "AM" && hour === 12) hour = 0;
-
-  const isoDate = new Date(
-    `${dateStr}T${hour.toString().padStart(2, "0")}:${minute
-      .toString()
-      .padStart(2, "0")}:00`
-  );
-  return isoDate.toISOString();
 }
 
 export default function BookingCalendar() {
@@ -62,10 +58,10 @@ export default function BookingCalendar() {
   }
 
   function isSlotBooked(date: Date, time: string) {
-    const iso = formatTo24Hour(date.toISOString().split("T")[0], time);
-    return appointments.some(
-      (appt) => new Date(appt.date).toISOString() === iso
-    );
+    // ✅ Build the slot’s UTC instant from LA-local date+time
+    const slotUtcISO = localSlotToUtcISO(date, time);
+    // ✅ Compare at minute precision to ignore seconds/millis differences
+    return appointments.some((appt) => isSameUtcMinute(appt.date, slotUtcISO));
   }
 
   async function handleBooking() {
@@ -73,10 +69,8 @@ export default function BookingCalendar() {
 
     setIsBooking(true);
 
-    const dateISO = formatTo24Hour(
-      selectedDate.toISOString().split("T")[0],
-      selectedTime
-    );
+    // ✅ Send a deterministic UTC ISO to the API
+    const dateISO = localSlotToUtcISO(selectedDate, selectedTime);
 
     const res = await fetch("/api/appointments", {
       method: "POST",
@@ -114,10 +108,11 @@ export default function BookingCalendar() {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const isPast = date < today;
-          const isWednesday = date.getDay() === 3;
-          return isPast || isWednesday;
+          const isTuesday = date.getDay() === 2;
+          return isPast || isTuesday;
         }}
       />
+
       {selectedDate && (
         <div className="w-full flex justify-end py-2">
           <button
@@ -136,27 +131,30 @@ export default function BookingCalendar() {
 
       {selectedDate && (
         <div className="mt-6">
-          <h2 className=" mb-2 p-2 text-center bg-green-100 text-green-500 rounded-sm">
+          <h2 className="mb-2 p-2 text-center bg-green-100 text-green-500 rounded-sm">
             Available Time Slots for{" "}
-            <strong>{selectedDate.toLocaleDateString()}</strong>
+            <strong>
+              {/* Optional: show the day in LA explicitly */}
+              {formatInTimeZone(selectedDate, APP_TZ, "PP")}
+            </strong>
           </h2>
 
           <div className="grid grid-cols-4 gap-2">
             {generateTimeSlots().map((time) => {
-              const isBooked = isSlotBooked(selectedDate, time);
+              const booked = isSlotBooked(selectedDate, time);
               const isSelected = time === selectedTime;
               return (
                 <button
                   key={time}
                   onClick={() => {
-                    if (!isBooked) {
+                    if (!booked) {
                       setSelectedTime(time);
                       setIsModalOpen(true);
                     }
                   }}
-                  disabled={isBooked}
+                  disabled={booked}
                   className={`px-2 py-1 rounded text-sm ${
-                    isBooked
+                    booked
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed line-through"
                       : isSelected
                       ? "bg-violet-200 text-zinc-600"
@@ -168,47 +166,19 @@ export default function BookingCalendar() {
               );
             })}
           </div>
+
           <div className="mt-4 text-center">
-            <a
-              href={`/dashboard/appointments/date/${
-                selectedDate.toISOString().split("T")[0]
-              }`}
+            <Link
+              // ✅ Build the date route param in LA (yyyy-MM-dd)
+              href={`/dashboard/appointments/date/${laDateParam(selectedDate)}`}
               className="text-sm text-violet-600 hover:underline"
             >
-              View all appointments for {selectedDate.toLocaleDateString()}
-            </a>
+              View all appointments for{" "}
+              {formatInTimeZone(selectedDate, APP_TZ, "PP")}
+            </Link>
           </div>
         </div>
       )}
-
-      {/* {selectedTime && (
-        <div className="mt-4">
-          <p>
-            Selected:{" "}
-            <strong>
-              {selectedDate?.toLocaleDateString()} at {selectedTime}
-            </strong>
-          </p>
-          <button
-            onClick={handleBooking}
-            className="mt-2 bg-violet-500 text-white px-4 py-2 cursor-pointer rounded hover:bg-violet-400 transition"
-            disabled={isBooking}
-          >
-            {isBooking ? (
-              <LoadingSpinner text="Submitting" />
-            ) : (
-              "Confirm Appointment"
-            )}
-          </button>
-        </div>
-      )} */}
-
-      {/* {status === "success" && (
-        <p className="text-green-500 mt-4">Appointment booked successfully!</p>
-      )}
-      {status === "error" && (
-        <p className="text-red-400 mt-4">Failed to book appointment.</p>
-      )} */}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 bg-opacity-30 flex justify-center items-center z-50">
