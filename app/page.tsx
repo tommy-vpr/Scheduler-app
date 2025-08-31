@@ -8,7 +8,7 @@ export default async function Home() {
   if (userId) redirect("/dashboard");
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center font-sans overflow-hidden">
+    <main className="p-4 relative min-h-screen flex items-center justify-center font-sans overflow-hidden">
       {/* Background image with its own opacity */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-50"
@@ -37,7 +37,7 @@ export default async function Home() {
           />
         </div>
 
-        <h1 className="text-3xl font-bold mb-2 text-rose-400">Nail Tastic</h1>
+        <h1 className="text-3xl font-bold mb-2 text-violet-400">Nail Tastic</h1>
         <p className="mb-6 text-gray-500">
           Sign in or create your account to continue
         </p>
@@ -45,7 +45,7 @@ export default async function Home() {
         <div className="flex flex-col items-center gap-4 w-full">
           <Link
             href="/sign-in"
-            className="w-3/4 bg-gradient-to-r from-pink-500 to-fuchsia-500 
+            className="w-3/4 bg-gradient-to-r from-violet-500 to-fuchsia-500 
                        hover:opacity-90 transition px-4 py-2 rounded-3xl 
                        text-white font-semibold shadow-lg"
           >
@@ -54,7 +54,7 @@ export default async function Home() {
           <Link
             href="/sign-up"
             className="w-3/4 bg-white/30 hover:bg-white/50 transition 
-                       px-4 py-2 rounded-3xl text-rose-500 font-semibold 
+                       px-4 py-2 rounded-3xl text-violet-500 font-semibold 
                        border border-white/40 shadow"
           >
             Sign up
