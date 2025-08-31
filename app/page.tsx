@@ -1,4 +1,3 @@
-// app/page.tsx (server component)
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -9,17 +8,21 @@ export default async function Home() {
   if (userId) redirect("/dashboard");
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center font-sans bg-cover bg-center"
-      style={{
-        backgroundImage:
-          "url('https://images.unsplash.com/photo-1614208194190-5bf690ad8a98?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
-      }}
-    >
+    <main className="relative min-h-screen flex items-center justify-center font-sans overflow-hidden">
+      {/* Background image with its own opacity */}
       <div
-        className="relative max-w-md w-full rounded-2xl p-6 text-center 
-                      backdrop-blur-sm bg-white/30 border border-white/20 
-                      shadow-2xl"
+        className="absolute inset-0 bg-cover bg-center opacity-50"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1581985430116-d8fba25256b0?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
+        }}
+      ></div>
+
+      {/* Foreground content */}
+      <div
+        className="relative z-10 max-w-md w-full rounded-2xl p-6 text-center 
+                    backdrop-blur-sm bg-white/30 border border-white/20 
+                    shadow-2xl"
       >
         {/* Glow effect */}
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/30 to-white/5 opacity-20 pointer-events-none"></div>
@@ -27,10 +30,10 @@ export default async function Home() {
         {/* Optional top image */}
         <div className="h-64 relative mb-4 rounded-xl overflow-hidden">
           <Image
-            src="https://images.unsplash.com/photo-1610992015836-7c249d75782d?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            src="/images/nail-tastic-main.jpg"
             fill
             alt="welcome image"
-            className="object-cover object-bottom"
+            className="object-cover object-center"
           />
         </div>
 
