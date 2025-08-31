@@ -1,7 +1,6 @@
 // app/dashboard/appointments/date/[date]/page.tsx
 import { format, parseISO } from "date-fns";
-// import { PrismaClient } from "@/app/generated/prisma";
-import AppointmentTable from "@/components/AppointmentTable"; // <-- direct import (client component)
+import AppointmentTable from "@/components/AppointmentTable"; // client component
 import { prisma } from "@/lib/prisma";
 
 type Params = { date: string };
@@ -9,9 +8,9 @@ type Params = { date: string };
 export default async function AppointmentsByDatePage({
   params,
 }: {
-  params: Params;
+  params: Promise<Params>;
 }) {
-  const { date } = params;
+  const { date } = await params; // 👈 Next 15: params is a Promise
 
   const start = new Date(`${date}T00:00:00`);
   const end = new Date(`${date}T23:59:59`);
@@ -33,7 +32,7 @@ export default async function AppointmentsByDatePage({
         <AppointmentTable
           appointments={appointments.map((a) => ({
             ...a,
-            date: a.date.toISOString(), // serialize for client component
+            date: a.date.toISOString(), // serialize Date for client component
           }))}
         />
       )}
