@@ -18,10 +18,13 @@ export default async function AppointmentsByDatePage({
   const appointments = await prisma.appointment.findMany({
     where: { date: { gte: start, lte: end } },
     orderBy: { date: "asc" },
+    include: {
+      nailTech: true, // ✅ this must be here
+    },
   });
 
   return (
-    <div className="max-w-[900px] mx-auto p-6 bg-white shadow rounded">
+    <div className="max-w-[900px] mx-auto p-4 md:p-6 bg-white shadow rounded">
       <h1 className="text-xl font-bold mb-4">
         {format(parseISO(date), "MMM d, yyyy")}
       </h1>

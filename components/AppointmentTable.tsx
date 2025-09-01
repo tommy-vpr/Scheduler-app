@@ -13,6 +13,7 @@ interface Appointment {
   customerName: string;
   phoneNumber: string;
   status: AppointmentStatus;
+  nailTech: { name: string } | null;
 }
 
 export default function AppointmentTable({
@@ -21,6 +22,8 @@ export default function AppointmentTable({
   appointments: Appointment[];
 }) {
   const [appointments, setAppointments] = useState(initialAppointments);
+
+  console.log(appointments);
 
   const [modalState, setModalState] = useState<{
     show: boolean;
@@ -72,6 +75,7 @@ export default function AppointmentTable({
         <table className="min-w-[600px] md:min-w-full text-sm text-left text-gray-700 border-collapse">
           <thead className="bg-gray-100 text-xs uppercase tracking-wider">
             <tr>
+              <th className="px-4 py-2 border-b border-gray-200">Nail Tech</th>
               <th className="px-4 py-2 border-b border-gray-200">Customer</th>
               <th className="px-4 py-2 border-b border-gray-200">Time</th>
               <th className="px-4 py-2 border-b border-gray-200">Phone</th>
@@ -86,6 +90,11 @@ export default function AppointmentTable({
                 onClick={() => openModal(appt.id, appt.status)}
                 className="cursor-pointer transition hover:bg-gray-50"
               >
+                <td className="px-4 py-2 border-b border-gray-200">
+                  <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-4xl">
+                    {appt.nailTech?.name ?? "—"}
+                  </span>
+                </td>
                 <td className="px-4 py-2 border-b border-gray-200">
                   {appt.customerName}
                 </td>

@@ -5,21 +5,26 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   const { userId: clerkUserId } = await auth();
-
   if (!clerkUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await req.json();
-  const { date, customerName, phoneNumber } = body;
+  const { date, customerName, phoneNumber, nailTechId, nailTechName } = body;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { clerkUserId },
-    });
-
+    const user = await prisma.user.findUnique({ where: { clerkUserId } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    let finalNailTechId = nailTechId;
+
+    if (!nailTechId && nailTechName) {
+      const newTech = await prisma.nailTech.create({
+        data: { name: nailTechName },
+      });
+      finalNailTechId = newTech.id;
     }
 
     const appointment = await prisma.appointment.create({
@@ -29,6 +34,10 @@ export async function POST(req: Request) {
         status: "confirmed",
         customerName,
         phoneNumber,
+        nailTechId: finalNailTechId,
+      },
+      include: {
+        nailTech: true, // ✅ include this
       },
     });
 
@@ -59,6 +68,7 @@ export async function GET() {
 
   const appointments = await prisma.appointment.findMany({
     where: { userId: user.id },
+    include: { nailTech: true }, // ✅ Include nail tech relation
     orderBy: { date: "desc" },
   });
 

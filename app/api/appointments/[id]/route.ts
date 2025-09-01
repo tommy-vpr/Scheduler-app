@@ -28,6 +28,9 @@ export async function PATCH(
   const updated = await prisma.appointment.update({
     where: { id: numericId },
     data: { status: status as "confirmed" | "cancelled" | "done" }, // tighten if you have a type/enum
+    include: {
+      nailTech: true, // ✅ this must be here
+    },
   });
 
   return NextResponse.json({ appointment: updated });

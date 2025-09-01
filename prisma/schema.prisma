@@ -28,13 +28,21 @@ enum AppointmentStatus {
   done
 }
 
+model NailTech {
+  id            Int           @id @default(autoincrement())
+  name          String        @unique
+  appointments  Appointment[]
+}
+
 model Appointment {
-  id            Int               @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   date          DateTime
-  user          User              @relation(fields: [userId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
   userId        Int
   status        AppointmentStatus
   customerName  String
   phoneNumber   String
+  nailTech      NailTech?     @relation(fields: [nailTechId], references: [id])
+  nailTechId    Int?
 }
 

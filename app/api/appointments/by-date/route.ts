@@ -28,6 +28,9 @@ export async function GET(req: Request) {
       },
     },
     orderBy: { date: "asc" },
+    include: {
+      nailTech: true, // ✅ this must be here
+    },
   });
 
   return NextResponse.json({ appointments });

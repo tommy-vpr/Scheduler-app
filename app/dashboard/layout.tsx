@@ -19,7 +19,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen font-sans bg-gray-100">
       <Header />
-      <div className="max-w-5xl mx-auto p-6">{children}</div>
+      <div className="max-w-5xl mx-auto p-4 md:p-6">{children}</div>
     </div>
   );
 }
