@@ -58,3 +58,59 @@ body {
   color: #fff !important;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
+
+/* Make the calendar participate in light/dark variable colors */
+.react-calendar {
+  color: var(--foreground);
+  color-scheme: light dark; /* lets the UA adapt controls without overriding your colors */
+}
+
+/* Navigation (month/year + arrows) */
+.react-calendar__navigation button {
+  color: var(--foreground) !important;
+  -webkit-text-fill-color: var(--foreground) !important; /* Safari */
+  background: transparent;
+}
+
+/* Weekday headers (Mon, Tue, …) */
+.react-calendar__month-view__weekdays abbr {
+  color: var(--foreground) !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  text-decoration: none; /* react-calendar sets underline via abbr */
+}
+
+/* Day tiles (numbers) */
+.react-calendar__tile {
+  color: var(--foreground) !important;
+  -webkit-text-fill-color: var(--foreground) !important;
+  background: transparent;
+}
+
+/* Today */
+.react-calendar__tile--now {
+  background: rgb(221, 217, 243) !important;
+}
+
+/* Selected */
+.react-calendar__tile--active {
+  background: #7c3aed !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* Disabled: don't rely on UA gray; set your own and avoid dimming twice */
+.react-calendar__tile:disabled,
+.react-calendar__navigation button:disabled {
+  color: #9ca3af !important; /* Tailwind gray-400-ish */
+  -webkit-text-fill-color: #9ca3af !important;
+  opacity: 1 !important; /* you already tint via color */
+  cursor: not-allowed;
+  background: transparent;
+}
+
+/* Weekend color wins after the base color above */
+.react-calendar__month-view__days__day--weekend:nth-child(7n),
+.react-calendar__month-view__days__day--weekend:nth-child(7n + 6) {
+  color: hsl(17, 86%, 58%) !important;
+  -webkit-text-fill-color: hsl(17, 86%, 58%) !important;
+}
