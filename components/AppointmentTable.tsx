@@ -70,7 +70,7 @@ export default function AppointmentTable({
     <>
       <div className="w-full overflow-x-auto">
         <table className="min-w-[600px] md:min-w-full text-sm text-left text-gray-700 border-collapse">
-          <thead className="bg-gray-100 text-xs uppercase tracking-wider text-gray-500">
+          <thead className="bg-gray-100 text-xs uppercase tracking-wider">
             <tr>
               <th className="px-4 py-2 border-b border-gray-200">Customer</th>
               <th className="px-4 py-2 border-b border-gray-200">Time</th>

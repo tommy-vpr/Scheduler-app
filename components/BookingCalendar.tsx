@@ -95,7 +95,9 @@ export default function BookingCalendar() {
 
   return (
     <div className="max-w-xl mx-auto p-6 rounded-lg shadow bg-white">
-      <h1 className="text-xl font-semibold mb-4">Book Appointment</h1>
+      <h1 className="text-xl text-gray-700 font-semibold mb-4">
+        Book Appointment
+      </h1>
 
       <Calendar
         onChange={(date) => {
@@ -182,7 +184,7 @@ export default function BookingCalendar() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 bg-opacity-30 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
+          <div className="bg-white p-6 rounded-lg w-[90vw] text-gray-700 max-w-md shadow-lg relative">
             <button
               onClick={() => {
                 if (selectedTime) {
@@ -190,7 +192,7 @@ export default function BookingCalendar() {
                   setSelectedTime("");
                 }
               }}
-              className="absolute top-2 right-2 text-zinc-500 hover:text-zinc-400 cursor-pointer"
+              className="absolute top-2 right-2 text-zinc-700 hover:text-zinc-400 cursor-pointer"
             >
               <FaX />
             </button>

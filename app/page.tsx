@@ -37,7 +37,7 @@ export default async function Home() {
           />
         </div>
 
-        <h1 className="text-3xl font-bold mb-2 text-violet-400">Nail Tastic</h1>
+        <h1 className="text-3xl font-bold mb-2 text-zinc-600">Nail Tastic</h1>
         <p className="mb-6 text-gray-500">
           Sign in or create your account to continue
         </p>

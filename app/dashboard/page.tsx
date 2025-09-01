@@ -13,10 +13,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-4">
+      <h1 className="text-3xl font-bold mb-4 text-gray-700">
         Welcome, {user?.firstName || "User"}
       </h1>
-      <p className="text-lg">Here’s your appointment dashboard.</p>
+      <p className="text-lg text-gray-700">
+        Here’s your appointment dashboard.
+      </p>
 
       {/* <div className="mt-6 p-4 border rounded-lg bg-gray-50">
         <p>
