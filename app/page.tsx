@@ -11,7 +11,7 @@ export default async function Home() {
     <main className="p-4 relative min-h-screen flex items-center justify-center font-sans overflow-hidden">
       {/* Background image with its own opacity */}
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-70"
+        className="absolute inset-0 bg-cover bg-center opacity-80"
         style={{
           backgroundImage:
             "url('https://images.unsplash.com/photo-1581985430116-d8fba25256b0?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
