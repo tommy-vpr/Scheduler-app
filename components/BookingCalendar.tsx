@@ -6,8 +6,6 @@ import "react-calendar/dist/Calendar.css";
 import { FaX } from "react-icons/fa6";
 import LoadingSpinner from "./LoadingSpinner";
 import toast from "react-hot-toast";
-
-// 👇 NEW: import your timezone utils
 import {
   APP_TZ,
   localSlotToUtcISO,
@@ -19,11 +17,11 @@ import Link from "next/link";
 import getColorForId from "@/utils/getColorForId";
 
 type Appointment = {
-  id: number;
-  date: string; // ISO from API
+  id: number | string;
+  date: string;
   status: string;
   nailTech?: {
-    id: number;
+    id: number | string;
     name: string;
   };
 };
@@ -66,8 +64,6 @@ export default function BookingCalendar() {
 
   useEffect(() => {
     if (selectedDate) fetchAppointments();
-
-    console.log(appointments);
   }, [selectedDate]);
 
   async function fetchAppointments() {
@@ -78,20 +74,6 @@ export default function BookingCalendar() {
     }
   }
 
-  // function isSlotBooked(date: Date, time: string) {
-  //   // ✅ Build the slot’s UTC instant from LA-local date+time
-  //   const slotUtcISO = localSlotToUtcISO(date, time);
-  //   // ✅ Compare at minute precision to ignore seconds/millis differences
-  //   return appointments.some((appt) => isSameUtcMinute(appt.date, slotUtcISO));
-  // }
-  function getSlotAppointment(
-    date: Date,
-    time: string
-  ): Appointment | undefined {
-    const slotUtcISO = localSlotToUtcISO(date, time);
-    return appointments.find((appt) => isSameUtcMinute(appt.date, slotUtcISO));
-  }
-
   function getSlotAppointments(date: Date, time: string): Appointment[] {
     const slotUtcISO = localSlotToUtcISO(date, time);
     return appointments.filter((appt) =>
@@ -99,48 +81,101 @@ export default function BookingCalendar() {
     );
   }
 
+  // ---- Derived values (booleans only; avoid rendering numbers like 0) ----
+  const techIdNum =
+    typeof selectedTechId === "number" ? selectedTechId : undefined;
+
+  function hasConflictForSelectedTech(
+    date: Date | null,
+    time: string,
+    techId?: number
+  ) {
+    if (!date || !time || !techId) return false;
+    const slotUtcISO = localSlotToUtcISO(date, time);
+    return appointments.some(
+      (a) =>
+        isSameUtcMinute(a.date, slotUtcISO) && Number(a.nailTech?.id) === techId
+    );
+  }
+
+  const hasConflict =
+    techIdNum !== undefined &&
+    hasConflictForSelectedTech(selectedDate, selectedTime, techIdNum);
+
+  const noTechSelected = selectedTechId === null;
+  const requiresNewTechName =
+    selectedTechId === "add-new" && !newTechName.trim();
+
+  function resetForm() {
+    setCustomerName("");
+    setPhoneNumber("");
+    setSelectedTechId(null);
+    setNewTechName("");
+    setSelectedTime("");
+    setStatus("idle");
+    setIsModalOpen(false);
+  }
+
   async function handleBooking() {
     if (!selectedDate || !selectedTime || !customerName || !phoneNumber) return;
 
-    setIsBooking(true);
-
-    const dateISO = localSlotToUtcISO(selectedDate, selectedTime);
-
-    const res = await fetch("/api/appointments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        date: dateISO,
-        customerName,
-        phoneNumber,
-        nailTechId:
-          typeof selectedTechId === "number" ? selectedTechId : undefined,
-        nailTechName: selectedTechId === "add-new" ? newTechName : undefined,
-      }),
-    });
-
-    if (res.ok) {
-      toast.success("Appointment booked successfully!");
-      setStatus("success");
-      setSelectedTime("");
-      setCustomerName("");
-      setPhoneNumber("");
-      setSelectedTechId(null);
-      setNewTechName("");
-      setIsModalOpen(false);
-      fetchAppointments();
-
-      // ✅ Refresh the nail tech dropdown if a new one was created
-      if (selectedTechId === "add-new") {
-        const fresh = await fetch("/api/nail-tech");
-        const data = await fresh.json();
-        setNailTechs(data.nailTechs);
-      }
-    } else {
-      toast.error("Failed to book appointment.");
+    if (hasConflict) {
+      toast.error("This nail tech already has an appointment at that time.");
+      return;
     }
 
-    setIsBooking(false);
+    setIsBooking(true);
+    const dateISO = localSlotToUtcISO(selectedDate, selectedTime);
+
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: dateISO,
+          customerName,
+          phoneNumber,
+          nailTechId: techIdNum,
+          nailTechName: selectedTechId === "add-new" ? newTechName : undefined,
+        }),
+      });
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
+
+      if (res.ok) {
+        toast.success("Appointment booked successfully!");
+        setStatus("success");
+        setSelectedTime("");
+        setCustomerName("");
+        setPhoneNumber("");
+        setSelectedTechId(null);
+        setNewTechName("");
+        setIsModalOpen(false);
+        fetchAppointments();
+
+        if (selectedTechId === "add-new") {
+          const fresh = await fetch("/api/nail-tech");
+          const nd = await fresh.json();
+          setNailTechs(nd.nailTechs);
+        }
+      } else {
+        const msg =
+          data?.error ||
+          (res.status === 409
+            ? "This nail tech already has an appointment at that time."
+            : "Failed to book appointment.");
+        toast.error(msg);
+        setStatus("error");
+      }
+    } catch {
+      toast.error("Network error. Please try again.");
+      setStatus("error");
+    } finally {
+      setIsBooking(false);
+    }
   }
 
   return (
@@ -173,8 +208,7 @@ export default function BookingCalendar() {
               setSelectedTime("");
               setStatus("idle");
             }}
-            className="text-sm text-white flex items-center justify-center p-2 rounded-full bg-rose-400 
-            cursor-pointer hover:bg-rose-300 transition duration-150 gap-2"
+            className="text-sm text-white flex items-center justify-center p-2 rounded-full bg-rose-400 hover:bg-rose-300 transition duration-150 gap-2"
           >
             <FaX />
           </button>
@@ -185,20 +219,13 @@ export default function BookingCalendar() {
         <div className="mt-6">
           <h2 className="mb-2 p-2 text-center bg-blue-100 text-blue-500 rounded-sm">
             Available Time Slots for{" "}
-            <strong>
-              {/* Optional: show the day in LA explicitly */}
-              {formatInTimeZone(selectedDate, APP_TZ, "PP")}
-            </strong>
+            <strong>{formatInTimeZone(selectedDate, APP_TZ, "PP")}</strong>
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {generateTimeSlots().map((time) => {
-              // const appointment = getSlotAppointment(selectedDate, time);
-              // const booked = Boolean(appointment);
               const slotAppointments = getSlotAppointments(selectedDate, time);
               const booked = slotAppointments.length > 0;
-
-              const isSelected = time === selectedTime;
               return (
                 <button
                   key={time}
@@ -206,7 +233,7 @@ export default function BookingCalendar() {
                     setSelectedTime(time);
                     setIsModalOpen(true);
                   }}
-                  className={`px-2 py-1 rounded text-sm hover:text-white hover:bg-violet-600 transition duration-100 cursor-pointer`}
+                  className="px-2 py-1 rounded text-sm hover:text-white hover:bg-violet-600 transition duration-100 cursor-pointer"
                 >
                   {booked ? (
                     <div className="flex flex-col items-center">
@@ -217,11 +244,11 @@ export default function BookingCalendar() {
                             appt.nailTech?.name?.charAt(0).toUpperCase() || "?";
                           const bgColor = getColorForId(
                             appt.nailTech?.id || appt.id
-                          ); // fallback to appointment ID
+                          );
                           return (
                             <span
                               key={appt.id}
-                              className={`text-[10px] text-white w-4 h-4 rounded-full flex items-center justify-center ${bgColor}`}
+                              className={`text-[10px] w-4 h-4 rounded-full flex items-center justify-center ${bgColor}`}
                             >
                               {initial}
                             </span>
@@ -239,7 +266,6 @@ export default function BookingCalendar() {
 
           <div className="mt-4 text-center">
             <Link
-              // ✅ Build the date route param in LA (yyyy-MM-dd)
               href={`/dashboard/appointments/date/${laDateParam(selectedDate)}`}
               className="text-sm text-violet-600 hover:underline"
             >
@@ -254,12 +280,7 @@ export default function BookingCalendar() {
         <div className="fixed inset-0 bg-black/60 bg-opacity-30 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg w-[90vw] text-gray-700 max-w-md shadow-lg relative">
             <button
-              onClick={() => {
-                if (selectedTime) {
-                  setIsModalOpen(false);
-                  setSelectedTime("");
-                }
-              }}
+              onClick={resetForm}
               className="absolute top-2 right-2 text-zinc-700 hover:text-zinc-400 cursor-pointer"
             >
               <FaX />
@@ -289,7 +310,13 @@ export default function BookingCalendar() {
               value={selectedTechId ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
-                setSelectedTechId(val === "add-new" ? "add-new" : Number(val));
+                if (val === "") {
+                  setSelectedTechId(null); // ✅ don’t coerce "" to 0
+                } else if (val === "add-new") {
+                  setSelectedTechId("add-new");
+                } else {
+                  setSelectedTechId(Number(val)); // ✅ real numeric id
+                }
               }}
               className="w-full mb-3 px-3 py-2 border border-gray-300 rounded"
             >
@@ -312,22 +339,34 @@ export default function BookingCalendar() {
               />
             )}
 
+            {/* inline conflict message */}
+            {hasConflict && (
+              <p className="text-sm text-red-500 mb-3">
+                {nailTechs.find((t) => t.id === techIdNum)?.name} is already
+                booked for {selectedTime}.
+              </p>
+            )}
+
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => {
-                  if (selectedTime) {
-                    setIsModalOpen(false);
-                    setSelectedTime("");
-                  }
-                }}
+                onClick={resetForm}
                 className="rounded px-4 py-2 text-sm bg-zinc-200 text-zinc-500 hover:bg-zinc-300 transition duration-150 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleBooking}
-                className="bg-violet-500 text-white px-4 py-2 rounded hover:bg-violet-400 transition cursor-pointer"
-                disabled={isBooking}
+                className="bg-violet-500 text-white px-4 py-2 rounded hover:bg-violet-400 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={
+                  isBooking ||
+                  !selectedDate ||
+                  !selectedTime ||
+                  !customerName ||
+                  !phoneNumber ||
+                  noTechSelected ||
+                  requiresNewTechName ||
+                  hasConflict
+                }
               >
                 {isBooking ? <LoadingSpinner text="Booking" /> : "Confirm"}
               </button>

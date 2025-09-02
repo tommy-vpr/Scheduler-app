@@ -6,6 +6,7 @@ import StatusBadge from "./StatusBadge";
 import StatusModal from "./StatusModal";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import toast from "react-hot-toast";
+import getColorForId from "@/utils/getColorForId";
 
 interface Appointment {
   id: number;
@@ -22,8 +23,6 @@ export default function AppointmentTable({
   appointments: Appointment[];
 }) {
   const [appointments, setAppointments] = useState(initialAppointments);
-
-  console.log(appointments);
 
   const [modalState, setModalState] = useState<{
     show: boolean;
@@ -91,10 +90,19 @@ export default function AppointmentTable({
                 className="cursor-pointer transition hover:bg-gray-50"
               >
                 <td className="px-4 py-2 border-b border-gray-200">
-                  <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-4xl">
-                    {appt.nailTech?.name ?? "—"}
-                  </span>
+                  {appt.nailTech ? (
+                    <span
+                      className={`${getColorForId(
+                        appt.nailTech.name
+                      )} px-3 py-1 rounded-full text-xs font-medium`}
+                    >
+                      {appt.nailTech.name}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
+
                 <td className="px-4 py-2 border-b border-gray-200">
                   {appt.customerName}
                 </td>
