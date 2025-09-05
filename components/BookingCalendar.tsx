@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { FaX } from "react-icons/fa6";
@@ -20,10 +20,23 @@ type Appointment = {
   id: number | string;
   date: string;
   status: string;
-  nailTech?: {
-    id: number | string;
-    name: string;
-  };
+  nailTech?: { id: number | string; name: string };
+};
+
+type DesignPriceOption = {
+  id: number;
+  label?: string | null;
+  priceCents: number;
+};
+
+type Service = {
+  id: number;
+  name: string;
+  priceCents: number;
+  durationMin?: number | null;
+  designMode: "none" | "fixed" | "custom";
+  designPriceCents?: number | null; // fixed
+  designPriceOptions?: DesignPriceOption[]; // ← NEW
 };
 
 function generateTimeSlots(start = 11, end = 20) {
@@ -43,10 +56,20 @@ export default function BookingCalendar() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedTime, setSelectedTime] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
   const [customerName, setCustomerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [isBooking, setIsBooking] = useState(false);
+
+  const [services, setServices] = useState<Service[]>([]);
+  // NEW: presets state
+  const [useCustomInput, setUseCustomInput] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
+
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
+    null
+  );
 
   const [nailTechs, setNailTechs] = useState<{ id: number; name: string }[]>(
     []
@@ -55,6 +78,50 @@ export default function BookingCalendar() {
     number | "add-new" | null
   >(null);
   const [newTechName, setNewTechName] = useState("");
+
+  // NEW: design add-on state
+  const [addDesign, setAddDesign] = useState(false);
+  const [designPrice, setDesignPrice] = useState(""); // USD string (custom mode)
+  const [designNotes, setDesignNotes] = useState("");
+
+  // derived helpers
+  const selectedService = useMemo(
+    () => services.find((s) => s.id === selectedServiceId) || null,
+    [services, selectedServiceId]
+  );
+
+  const isCustomDesign = selectedService?.designMode === "custom";
+  const isFixedDesign = selectedService?.designMode === "fixed";
+  const designPriceCentsFromFixed = selectedService?.designPriceCents ?? null;
+  // derive a price from selected preset
+  const presetPriceCents = useMemo(() => {
+    if (!selectedService?.designPriceOptions || selectedPresetId == null)
+      return null;
+    const opt = selectedService.designPriceOptions.find(
+      (o) => o.id === selectedPresetId
+    );
+    return opt ? opt.priceCents : null;
+  }, [selectedService, selectedPresetId]);
+
+  const customNeedsPriceError =
+    addDesign &&
+    isCustomDesign && // using presets path and none selected while presets exist
+    ((!useCustomInput &&
+      (selectedService?.designPriceOptions?.length ?? 0) > 0 &&
+      !selectedPresetId) ||
+      // using custom input OR no presets exist -> need positive number
+      ((useCustomInput ||
+        (selectedService?.designPriceOptions?.length ?? 0) === 0) &&
+        (!designPrice || !(Number(designPrice) > 0))));
+
+  const needsDesignPrice =
+    addDesign && isCustomDesign && (!designPrice || !(Number(designPrice) > 0));
+
+  useEffect(() => {
+    fetch("/api/services")
+      .then((r) => r.json())
+      .then((d) => setServices(d.services));
+  }, []);
 
   useEffect(() => {
     fetch("/api/nail-tech")
@@ -81,7 +148,6 @@ export default function BookingCalendar() {
     );
   }
 
-  // ---- Derived values (booleans only; avoid rendering numbers like 0) ----
   const techIdNum =
     typeof selectedTechId === "number" ? selectedTechId : undefined;
 
@@ -112,22 +178,56 @@ export default function BookingCalendar() {
     setSelectedTechId(null);
     setNewTechName("");
     setSelectedTime("");
+    setSelectedServiceId(null);
+    setAddDesign(false);
+    setDesignPrice("");
+    setDesignNotes("");
     setStatus("idle");
     setIsModalOpen(false);
+    setUseCustomInput(false);
+    setSelectedPresetId(null);
   }
 
   async function handleBooking() {
     if (!selectedDate || !selectedTime || !customerName || !phoneNumber) return;
+
+    if (!selectedServiceId) {
+      toast.error("Please select a service.");
+      return;
+    }
 
     if (hasConflict) {
       toast.error("This nail tech already has an appointment at that time.");
       return;
     }
 
-    setIsBooking(true);
+    // design validation (client)
+    if (addDesign && isCustomDesign && needsDesignPrice) {
+      toast.error("Please enter a valid design price.");
+      return;
+    }
+
+    if (customNeedsPriceError) {
+      toast.error("Please choose a preset or enter a valid design price.");
+      return;
+    }
+
+    // setIsBooking(true);
+
     const dateISO = localSlotToUtcISO(selectedDate, selectedTime);
 
+    // compute USD value for designPrice to send (only for custom mode)
+    const usdFromPreset =
+      presetPriceCents != null ? presetPriceCents / 100 : undefined;
+    const designPriceUsd =
+      addDesign && isCustomDesign
+        ? useCustomInput || usdFromPreset === undefined
+          ? Number(designPrice)
+          : usdFromPreset
+        : undefined;
+
     try {
+      setIsBooking(true);
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,6 +237,13 @@ export default function BookingCalendar() {
           phoneNumber,
           nailTechId: techIdNum,
           nailTechName: selectedTechId === "add-new" ? newTechName : undefined,
+          serviceId: selectedServiceId,
+
+          // design payload
+          addDesign,
+          designPrice: designPriceUsd,
+          designNotes:
+            addDesign && designNotes.trim() ? designNotes.trim() : undefined,
         }),
       });
 
@@ -148,12 +255,7 @@ export default function BookingCalendar() {
       if (res.ok) {
         toast.success("Appointment booked successfully!");
         setStatus("success");
-        setSelectedTime("");
-        setCustomerName("");
-        setPhoneNumber("");
-        setSelectedTechId(null);
-        setNewTechName("");
-        setIsModalOpen(false);
+        resetForm();
         fetchAppointments();
 
         if (selectedTechId === "add-new") {
@@ -208,7 +310,7 @@ export default function BookingCalendar() {
               setSelectedTime("");
               setStatus("idle");
             }}
-            className="text-sm text-white flex items-center justify-center p-2 rounded-full bg-rose-400 hover:bg-rose-300 transition duration-150 gap-2"
+            className="text-sm text-white flex items-center justify-center p-2 cursor-pointer rounded-full bg-rose-400 hover:bg-rose-300 transition duration-150 gap-2"
           >
             <FaX />
           </button>
@@ -306,17 +408,149 @@ export default function BookingCalendar() {
               className="w-full mb-4 px-3 py-2 border border-gray-300 rounded"
             />
 
+            {/* Service */}
+            <select
+              value={selectedServiceId ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedServiceId(val ? Number(val) : null);
+
+                // reset design state when switching service
+                setAddDesign(false);
+                setDesignPrice("");
+                setDesignNotes("");
+              }}
+              className="w-full mb-3 px-3 py-2 border border-gray-300 rounded"
+            >
+              <option value="">Select Service</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — ${(s.priceCents / 100).toFixed(2)}
+                </option>
+              ))}
+            </select>
+
+            {/* Design add-on */}
+            {/* Design add-on */}
+            {selectedService && selectedService.designMode !== "none" && (
+              <div className="mb-3 p-3 rounded border bg-gray-50">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={addDesign}
+                    onChange={(e) => setAddDesign(e.target.checked)}
+                  />
+                  <span>Add Nail Art / Design</span>
+                </label>
+
+                {/* FIXED */}
+                {addDesign && isFixedDesign && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Design price: $
+                    {((designPriceCentsFromFixed ?? 0) / 100).toFixed(2)}{" "}
+                    (fixed)
+                  </p>
+                )}
+
+                {/* CUSTOM */}
+                {addDesign && isCustomDesign && (
+                  <div className="mt-2 space-y-2">
+                    {/* If presets exist, allow choosing preset or switching to custom input */}
+                    {(selectedService.designPriceOptions?.length ?? 0) > 0 && (
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="designPriceSource"
+                            checked={!useCustomInput}
+                            onChange={() => {
+                              setUseCustomInput(false);
+                              setDesignPrice("");
+                            }}
+                          />
+                          <span>Choose preset</span>
+                        </label>
+
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="designPriceSource"
+                            checked={useCustomInput}
+                            onChange={() => {
+                              setUseCustomInput(true);
+                              setSelectedPresetId(null);
+                            }}
+                          />
+                          <span>Add new price</span>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Preset list */}
+                    {!useCustomInput &&
+                      (selectedService.designPriceOptions?.length ?? 0) > 0 && (
+                        <select
+                          value={selectedPresetId ?? ""}
+                          onChange={(e) =>
+                            setSelectedPresetId(
+                              e.target.value ? Number(e.target.value) : null
+                            )
+                          }
+                          className="border rounded px-3 py-2 w-full"
+                        >
+                          <option value="">Select a preset</option>
+                          {selectedService.designPriceOptions!.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {(opt.label ? `${opt.label} — ` : "") +
+                                `$${(opt.priceCents / 100).toFixed(2)}`}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                    {/* Custom price input (if toggled OR no presets exist) */}
+                    {(useCustomInput ||
+                      (selectedService.designPriceOptions?.length ?? 0) ===
+                        0) && (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="border rounded px-3 py-2 w-full"
+                        placeholder="Design price (USD)"
+                        value={designPrice}
+                        onChange={(e) => setDesignPrice(e.target.value)}
+                      />
+                    )}
+
+                    {/* Optional notes */}
+                    <input
+                      type="text"
+                      className="border rounded px-3 py-2 w-full"
+                      placeholder="Design notes (optional)"
+                      value={designNotes}
+                      onChange={(e) => setDesignNotes(e.target.value)}
+                    />
+
+                    {/* Validation */}
+                    {customNeedsPriceError && (
+                      <p className="text-xs text-red-500">
+                        Please choose a preset or enter a valid design price.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Nail tech */}
             <select
               value={selectedTechId ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === "") {
-                  setSelectedTechId(null); // ✅ don’t coerce "" to 0
-                } else if (val === "add-new") {
-                  setSelectedTechId("add-new");
-                } else {
-                  setSelectedTechId(Number(val)); // ✅ real numeric id
-                }
+                if (val === "") setSelectedTechId(null);
+                else if (val === "add-new") setSelectedTechId("add-new");
+                else setSelectedTechId(Number(val));
               }}
               className="w-full mb-3 px-3 py-2 border border-gray-300 rounded"
             >
@@ -339,11 +573,36 @@ export default function BookingCalendar() {
               />
             )}
 
-            {/* inline conflict message */}
+            {/* conflict message */}
             {hasConflict && (
               <p className="text-sm text-red-500 mb-3">
                 {nailTechs.find((t) => t.id === techIdNum)?.name} is already
                 booked for {selectedTime}.
+              </p>
+            )}
+
+            {/* Price preview */}
+            {selectedService && (
+              <p className="text-sm text-gray-500 mb-2">
+                Total price: $
+                {(
+                  (selectedService.priceCents +
+                    // add fixed add-on
+                    (addDesign && isFixedDesign
+                      ? designPriceCentsFromFixed ?? 0
+                      : 0) +
+                    // add custom add-on (preset or manual input)
+                    (addDesign && isCustomDesign
+                      ? presetPriceCents ??
+                        (designPrice
+                          ? Math.round(Number(designPrice) * 100)
+                          : 0)
+                      : 0)) /
+                  100
+                ).toFixed(2)}
+                {selectedService.durationMin
+                  ? ` • ${selectedService.durationMin} min`
+                  : ""}
               </p>
             )}
 
@@ -363,9 +622,11 @@ export default function BookingCalendar() {
                   !selectedTime ||
                   !customerName ||
                   !phoneNumber ||
+                  !selectedServiceId ||
                   noTechSelected ||
                   requiresNewTechName ||
-                  hasConflict
+                  hasConflict ||
+                  (addDesign && isCustomDesign && needsDesignPrice)
                 }
               >
                 {isBooking ? <LoadingSpinner text="Booking" /> : "Confirm"}

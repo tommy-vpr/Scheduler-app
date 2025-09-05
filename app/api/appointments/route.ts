@@ -9,7 +9,35 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { date, customerName, phoneNumber, nailTechId, nailTechName } = body;
+  const {
+    date,
+    customerName,
+    phoneNumber,
+    nailTechId,
+    nailTechName,
+    serviceId,
+    // NEW (optional inputs for design)
+    addDesign,
+    designPrice, // USD (number) only when service.designMode === "custom"
+    designNotes, // optional string
+  } = body as {
+    date: string;
+    customerName: string;
+    phoneNumber: string;
+    nailTechId?: number;
+    nailTechName?: string;
+    serviceId: number | string;
+    addDesign?: boolean;
+    designPrice?: number;
+    designNotes?: string;
+  };
+
+  if (!serviceId) {
+    return NextResponse.json(
+      { error: "Please select a service." },
+      { status: 400 }
+    );
+  }
 
   try {
     const user = await prisma.user.findUnique({ where: { clerkUserId } });
@@ -17,10 +45,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    let finalNailTechId = nailTechId;
+    // Ensure service exists and is active
+    const svc = await prisma.service.findUnique({
+      where: { id: Number(serviceId) },
+      select: {
+        id: true,
+        name: true,
+        active: true,
+        priceCents: true,
+        designMode: true, // "none" | "fixed" | "custom"
+        designPriceCents: true, // when fixed
+      },
+    });
+    if (!svc || !svc.active) {
+      return NextResponse.json({ error: "Invalid service." }, { status: 400 });
+    }
 
-    // create nail tech if only a name was passed
-    if (!nailTechId && nailTechName) {
+    // Create nail tech if only a name was passed
+    let finalNailTechId = nailTechId as number | undefined;
+    if (!finalNailTechId && nailTechName) {
       const newTech = await prisma.nailTech.create({
         data: { name: nailTechName },
       });
@@ -29,22 +72,64 @@ export async function POST(req: Request) {
 
     const appointmentDate = new Date(date);
 
-    // ✅ check if that nail tech already has an appointment at this date/time
-    const conflict = await prisma.appointment.findFirst({
-      where: {
-        nailTechId: finalNailTechId,
-        date: appointmentDate,
-      },
-    });
-
-    if (conflict) {
-      return NextResponse.json(
-        { error: "This nail tech already has an appointment at that time." },
-        { status: 400 }
-      );
+    // Conflict: same tech, same minute
+    if (finalNailTechId) {
+      const conflict = await prisma.appointment.findFirst({
+        where: { nailTechId: finalNailTechId, date: appointmentDate },
+        select: { id: true },
+      });
+      if (conflict) {
+        return NextResponse.json(
+          { error: "This nail tech already has an appointment at that time." },
+          { status: 400 }
+        );
+      }
     }
 
-    // ✅ create the appointment if no conflict
+    // ---- Design add-on logic (server-enforced) ----
+    const wantsDesign = Boolean(addDesign);
+    let hasDesign = false;
+    let designPriceCentsSnapshot: number | null = null;
+    const designNotesSanitized =
+      typeof designNotes === "string" && designNotes.trim()
+        ? designNotes.trim().slice(0, 200)
+        : null;
+
+    if (wantsDesign) {
+      if (svc.designMode === "none") {
+        return NextResponse.json(
+          { error: "Design is not available for this service." },
+          { status: 400 }
+        );
+      }
+
+      if (svc.designMode === "fixed") {
+        if (svc.designPriceCents == null) {
+          return NextResponse.json(
+            { error: "Design price is not configured for this service." },
+            { status: 400 }
+          );
+        }
+        hasDesign = true;
+        designPriceCentsSnapshot = svc.designPriceCents;
+      }
+
+      if (svc.designMode === "custom") {
+        if (typeof designPrice !== "number" || !(designPrice > 0)) {
+          return NextResponse.json(
+            {
+              error: "Design price is required and must be > 0.",
+              field: "designPrice",
+            },
+            { status: 400 }
+          );
+        }
+        hasDesign = true;
+        designPriceCentsSnapshot = Math.round(designPrice * 100);
+      }
+    }
+
+    // Create appointment with snapshots (service + design)
     const appointment = await prisma.appointment.create({
       data: {
         date: appointmentDate,
@@ -53,10 +138,16 @@ export async function POST(req: Request) {
         customerName,
         phoneNumber,
         nailTechId: finalNailTechId,
+
+        serviceId: svc.id,
+        serviceName: svc.name, // snapshot
+        priceCents: svc.priceCents, // snapshot (base)
+
+        hasDesign,
+        designPriceCents: hasDesign ? designPriceCentsSnapshot : null,
+        designNotes: hasDesign ? designNotesSanitized : null,
       },
-      include: {
-        nailTech: true,
-      },
+      include: { nailTech: true, service: true },
     });
 
     return NextResponse.json({ success: true, appointment });

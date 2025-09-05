@@ -8,15 +8,15 @@ export default async function Home() {
   if (userId) redirect("/dashboard");
 
   return (
-    <main className="p-4 relative min-h-screen flex items-center justify-center font-sans overflow-hidden">
+    <main className="p-4 relative min-h-screen bg-linear-to-t from-gray-300 to-gray-100 flex items-center justify-center font-sans overflow-hidden">
       {/* Background image with its own opacity */}
-      <div
+      {/* <div
         className="absolute inset-0 bg-cover bg-center opacity-80"
         style={{
           backgroundImage:
             "url('https://images.unsplash.com/photo-1581985430116-d8fba25256b0?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
         }}
-      ></div>
+      ></div> */}
 
       {/* Foreground content */}
       <div
@@ -30,14 +30,14 @@ export default async function Home() {
         {/* Optional top image */}
         <div className="h-64 relative mb-4 rounded-xl overflow-hidden">
           <Image
-            src="/images/nail-tastic-main.jpg"
+            src="https://images.unsplash.com/photo-1611651338412-8403fa6e3599?q=80&w=1471&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
             fill
             alt="welcome image"
             className="object-cover object-center"
           />
         </div>
 
-        <h1 className="text-3xl font-bold mb-2 text-zinc-600">Nail Tastic</h1>
+        <h1 className="text-3xl font-bold mb-2 text-zinc-600">911 Racing</h1>
         <p className="mb-6 text-gray-500">
           Sign in or create your account to continue
         </p>
@@ -45,7 +45,7 @@ export default async function Home() {
         <div className="flex flex-col items-center gap-4 w-full">
           <Link
             href="/sign-in"
-            className="w-3/4 bg-gradient-to-r from-violet-500 to-fuchsia-500 
+            className="w-3/4 bg-gradient-to-r from-blue-500 to-blue-300 
                        hover:opacity-90 transition px-4 py-2 rounded-3xl 
                        text-white font-semibold shadow-lg"
           >
@@ -54,7 +54,7 @@ export default async function Home() {
           <Link
             href="/sign-up"
             className="w-3/4 bg-white/30 hover:bg-white/50 transition 
-                       px-4 py-2 rounded-3xl text-violet-500 font-semibold 
+                       px-4 py-2 rounded-3xl text-blue-500 font-semibold 
                        border border-white/40 shadow"
           >
             Sign up
